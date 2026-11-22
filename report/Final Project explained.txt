@@ -1,0 +1,191 @@
+CIS 5370 – Project Command Log
+
+Step 1: GitHub Repository Setup
+
+Created a GitHub repository to store and share the project files with team members.
+
+Created folders for the original dataset, processed data, Python scripts, incident coding, analysis results, and final report.
+
+Identified the need to configure .gitignore to prevent the original dataset files from being uploaded to GitHub.
+
+Step 2: Dataset Preparation
+
+Dataset: The Ransomware Decade, Version 1.0.0
+
+Source: https://zenodo.org/records/15571866
+
+Downloaded the following files into data/raw/:
+
+incidents.csv
+
+incidents.zip
+
+schema.json
+
+Command: Inspect the Dataset
+
+python -c "import pandas as pd; df = pd.read_csv('data/raw/incidents.csv'); print('Rows:', len(df)); print('Columns:', df.columns.tolist()); print(df.head(3).to_string(index=False))"
+
+Purpose:
+
+This command uses Python and Pandas to examine the original ransomware dataset without modifying it.
+
+import pandas as pd — Imports the Pandas library.
+
+pd.read_csv(...) — Reads the CSV dataset.
+
+len(df) — Displays the total number of incident records.
+
+df.columns.tolist() — Displays the names of all dataset columns.
+
+df.head(3) — Displays the first three incident records.
+
+to_string(index=False) — Prints those records without the DataFrame row index.
+
+
+Command to install pandas
+python -m pip install pandas
+Pandas is used to load, filter, and analyze the ransomware dataset.
+
+To make the output more readable, limiting the out to to only the relevant columns
+
+python -c "import pandas as pd; df=pd.read_csv('data/raw/incidents.csv'); print(df[['uuid','victim','sector','incident-date','payment-outcome']].head(10).to_string(index=False))"
+
+Output:
+
+                                uuid                                victim      sector incident-date payment-outcome
+09c09efc-31b1-5e95-8bb2-2800f451f4d3                Bournemouth University Educational    2015-08-30         Unknown
+c95e8b1f-2622-5d7d-8724-709acffecab3           Hardin County School System Educational    2016-01-01         Refused
+3db7767d-9552-5362-869e-cd385fb4d22b              St. Louis Public Library  Government    2016-01-19         Refused
+301a069f-54ab-5f4f-a0b2-8ccaef8ecdfc          Israel Electricity Authority       Other    2016-01-27         Unknown
+87bd0cff-08e8-5b41-b43b-c27f402c6ba2           Lincolnshire County Council  Government    2016-01-31         Refused
+35bbf0d0-dd82-5a36-8bc2-6229f79c17cc Hollywood Presbyterian Medical Center  Healthcare    2016-02-05            Paid
+8a176ac3-a65a-5bf9-900c-707a468c0024 Northeast Independent School District Educational    2016-02-07         Unknown
+7ce78f88-c233-53a9-aa85-e9a5e67323d1                  Horry County Schools Educational    2016-02-08            Paid
+4fd79dbf-192c-508c-b029-133acd43f5f6                        The Brown Firm       Other    2016-02-15            Paid
+24800bb8-44c3-5189-8109-51988c6d2d05       Whanganui District Health Board  Healthcare    2016-02-23         Refused
+
+
+Count healthcare incidents from 2020–2023
+Determine how many healthcare ransomware incident records exist for each year between 2020 and 2023.
+
+
+python -c "import pandas as pd; df=pd.read_csv('data/raw/incidents.csv'); df['incident-date']=pd.to_datetime(df['incident-date'],errors='coerce'); h=df[(df['sector']=='Healthcare') & (df['incident-date'].dt.year.between(2020,2023))]; print(h['incident-date'].dt.year.value_counts().sort_index()); print('Total candidates:',len(h))"
+
+
+Output:
+
+incident-date
+2020    124
+2021    187
+2022    136
+2023    223
+Name: count, dtype: int64
+Total candidates: 670
+
+Inspecting dataset Schema
+
+python -c "import json; data=json.load(open('data/raw/schema.json',encoding='utf-8')); print('Schema sections:',list(data.keys()))"
+
+Output:
+
+Schema sections: ['$schema', 'title', 'type', 'properties', 'required', 'additionalProperties', '$defs']
+
+Output meaning: The shema consist of 7 main sections
+
+Section			Meaning
+$schema			JSON Schema standard being used
+title			Name or title of the schema
+type			Expected type of the data
+properties		Definitions of the dataset fields
+required		Fields that must be present
+additionalProperties	Whether fields outside those defined are allowed
+
+$defs			Reusable definitions referenced elsewhere in the schema
+
+To identify the main scheme defined in the schema and also determine fields at are mandetory
+
+python -c "import json; d=json.load(open('data/raw/schema.json',encoding='utf-8')); print('Properties:',list(d['properties'].keys())); print('Required:',d.get('required',[]))"
+
+Properties: ['uuid', 'victim', 'sector', 'attacker', 'incident-date', 'attack-vector', 'attacker-action', 'victim-action', 'impact', 'affected-data', 'indirect-victim', 'timeline', 'sources', 'ransomware.live-url']
+Required: ['uuid', 'victim', 'sector', 'attacker', 'incident-date', 'sources']
+
+The output shows that the dataset defines 14 main properties and las 6 required fields
+
+Output:
+
+Field		Meaning
+uuid		Unique incident identifier
+victim		Organization affected
+sector		Industry classification
+attacker	Recorded attacker information
+incident-date	Incident date
+sources		Supporting evidence URLs
+
+Command to determinehow the schema defines incident dates
+
+python -c "import json,pprint; d=json.load(open('data/raw/schema.json',encoding='utf-8')); pprint.pp(d['properties']['incident-date'])"
+
+Output:
+
+{'type': 'string',
+ 'format': 'date',
+ 'description': 'Date on which the the incident occurred or began.'}
+
+Property	Value					Meaning
+type		string					The date is stored as text
+format		date					The expected format is YYYY-MM-DD
+description	Date incident occurred or began		Identifies when the attack occurred or started
+
+
+Command to check for missing value in the fields of consequence
+
+python -c "import pandas as pd; df=pd.read_csv('data/raw/incidents.csv'); df['incident-date']=pd.to_datetime(df['incident-date'],errors='coerce'); h=df[(df['sector']=='Healthcare') & (df['incident-date'].dt.year.between(2020,2023))]; print(h[['uuid','victim','sector','incident-date','sources']].isna().sum())"
+
+
+Output:
+
+uuid             0
+victim           0
+sector           0
+incident-date    0
+sources          0
+dtype: int64
+
+This suggests that none of the 670 healthcare records have missing values in the five fields checked. However, this does not mean that all the information in these fields is necessarily complete or accurate.
+
+Follow up check to ensure no missing value
+
+C:\Users\pgree\Projects\CIS5370-Ransomware-Disruption-Recovery>python -c "import pandas as pd; df=pd.read_csv('data/raw/incidents.csv'); df['incident-date']=pd.to_datetime(df['incident-date'],errors='coerce'); h=df[(df['sector']=='Healthcare') & (df['incident-date'].dt.year.between(2020,2023))]; print('Total candidates:',len(h)); print('Empty source lists:',h['sources'].fillna('').str.strip().isin(['[]','']).sum())"
+
+Total candidates: 670
+Empty source lists: 0
+
+The output shows that all 670 healthcare records contain a value in the sources field and none have an empty source list. The sources will still need to be reviewed to confirm the incidents.
+
+python -c "import json,pprint; d=json.load(open('data/raw/schema.json',encoding='utf-8')); [(print('\nFIELD:',k),pprint.pp(d['properties'][k])) for k in ['uuid','sector','sources']]"
+
+Output:
+
+FIELD: uuid
+{'type': 'string',
+ 'format': 'uuid',
+ 'description': 'Unique identifier for this incident record.'}
+
+FIELD: sector
+{'type': 'string',
+ 'description': 'Industry classification of the victim.',
+ 'enum': ['Communications',
+          'Consumer Goods',
+          'Educational',
+          'Financials',
+          'Government',
+          'Healthcare',
+          'Industrials',
+          'IT',
+          'Other']}
+
+FIELD: sources
+{'type': 'array',
+ 'description': 'Source articles from which incident details were extracted.',
+ 'items': {'$ref': '#/$defs/source'}}
